@@ -204,8 +204,8 @@ mod teet {
         let loader = Loader::new(|| HalfBackend, 10, 1);
 
         let f1 = loader.load(1).unwrap().map(|v| assert!(v.unwrap().is_none()));
-        let f2 = loader.load(2).unwrap().map(|v| assert_eq!(v.unwrap().unwrap(), HalfValue { key: 2, half: 1 }));
         let f3 = loader.load(3).unwrap().map(|v| assert!(v.unwrap().is_none()));
+        let f2 = loader.load(2).unwrap().map(|v| assert_eq!(v.unwrap().unwrap(), HalfValue { key: 2, half: 1 }));
         let f4 = loader.load(4).unwrap().map(|v| assert_eq!(v.unwrap().unwrap(), HalfValue { key: 4, half: 2 }));
         future::join_all(vec![
             Box::new(f1) as Box<Future<Item = _, Error = _>>,
