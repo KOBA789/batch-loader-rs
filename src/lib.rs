@@ -1,3 +1,5 @@
+//! Query batching utility
+
 extern crate batch_recv;
 extern crate crossbeam_channel as chan;
 extern crate futures;
@@ -10,14 +12,22 @@ use itertools::Itertools;
 use worker_sentinel::{Work, WorkFactory};
 use batch_recv::BatchRecv;
 
+/// Trait for values which is identifiable by unique `Key`
+///
+/// Values must be cloneable because a single value will be cloned to the respective
+/// multiple callers if some callers request by the same key.
 pub trait Value: Debug + Clone + Send {
+    /// Key is used to route the values to the caller.
     type Key: Ord + Clone + Send + 'static;
+    /// Returns a `Key`
     fn key(&self) -> &Self::Key;
 }
 
+/// Trait for querier backend
 pub trait Backend: Send + 'static {
     type Value: Value;
     type Error: Debug + Clone + Send;
+    /// This function provides the actual data fetching logic.
     fn batch_load<'a, I>(&self, keys: I) -> Result<Vec<Self::Value>, Self::Error>
     where
         I: Iterator<Item = &'a <Self::Value as Value>::Key> + 'a;
@@ -46,6 +56,9 @@ type Message<B> = (
 type QueueTx<B> = chan::Sender<Message<B>>;
 type QueueRx<B> = chan::Receiver<Message<B>>;
 
+/// Batched data loader interface
+///
+/// Loader is composed of the queue which associated to the backend.
 #[derive(Clone)]
 pub struct Loader<B>
 where
@@ -58,6 +71,10 @@ impl<B> Loader<B>
 where
     B: Backend,
 {
+    /// Create new loader
+    ///
+    /// `concurrent` sets the number of threads which runs the backend.
+    /// `new_backend` will be called in spawning the new thread.
     pub fn new<N>(new_backend: N, batch_size: usize, concurrent: usize) -> Loader<B>
     where
         N: NewBackend<Backend = B> + 'static,
@@ -72,6 +89,9 @@ where
         Loader { queue_tx }
     }
 
+    /// Load value by key
+    ///
+    /// This function writes the key to the queue and returns a Future to wait the result.
     pub fn load(
         &self,
         key: <B::Value as Value>::Key,
@@ -167,7 +187,7 @@ where
 
 #[cfg(test)]
 mod teet {
-    use futures::{Future, future};
+    use futures::{future, Future};
     use super::{Backend, Loader, Value};
     #[derive(Debug, Clone, PartialEq)]
     struct HalfValue {
@@ -203,15 +223,26 @@ mod teet {
     fn test_loader() {
         let loader = Loader::new(|| HalfBackend, 10, 1);
 
-        let f1 = loader.load(1).unwrap().map(|v| assert!(v.unwrap().is_none()));
-        let f3 = loader.load(3).unwrap().map(|v| assert!(v.unwrap().is_none()));
-        let f2 = loader.load(2).unwrap().map(|v| assert_eq!(v.unwrap().unwrap(), HalfValue { key: 2, half: 1 }));
-        let f4 = loader.load(4).unwrap().map(|v| assert_eq!(v.unwrap().unwrap(), HalfValue { key: 4, half: 2 }));
+        let f1 = loader
+            .load(1)
+            .unwrap()
+            .map(|v| assert!(v.unwrap().is_none()));
+        let f3 = loader
+            .load(3)
+            .unwrap()
+            .map(|v| assert!(v.unwrap().is_none()));
+        let f2 = loader.load(2).unwrap().map(|v| {
+            assert_eq!(v.unwrap().unwrap(), HalfValue { key: 2, half: 1 })
+        });
+        let f4 = loader.load(4).unwrap().map(|v| {
+            assert_eq!(v.unwrap().unwrap(), HalfValue { key: 4, half: 2 })
+        });
         future::join_all(vec![
             Box::new(f1) as Box<Future<Item = _, Error = _>>,
             Box::new(f2) as Box<_>,
             Box::new(f3) as Box<_>,
             Box::new(f4) as Box<_>,
-        ]).wait().unwrap();
+        ]).wait()
+            .unwrap();
     }
 }
