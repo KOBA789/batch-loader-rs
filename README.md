@@ -1,4 +1,4 @@
-X# batch-loader-rs
+# batch-loader-rs
 
 The contracts and implementation for query batching.
 
