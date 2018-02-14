@@ -1,7 +1,13 @@
 [package]
 name = "batch-loader"
 version = "0.1.0"
-authors = ["Hidekazu Kobayashi <hidekazu-kobayashi@cookpad.com>"]
+authors = ["KOBA789 <kobahide789@gmail.com>"]
+description = "The contracts and implementation for query batching."
+license = "MIT"
+license-file = "LICENSE"
+documentation = "https://docs.rs/batch-loader"
+repository = "https://github.com/KOBA789/batch-loader-rs"
+readme = "README.md"
 
 [dependencies]
 itertools = "0.7"
@@ -10,7 +16,3 @@ crossbeam-channel = "0.1"
 error-chain = "0.11"
 worker-sentinel = "0.3"
 batch-recv = { version = "0.1", features = ["crossbeam"] }
-
-[patch.crates-io]
-worker-sentinel = { git = "https://github.com/KOBA789/worker-sentinel-rs" }
-batch-recv = { git = "ssh://git@github.com/KOBA789/batch-recv-rs" }
